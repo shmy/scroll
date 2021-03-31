@@ -36,8 +36,8 @@ class Scroll extends StatefulWidget {
 }
 
 class _ScrollState extends State<Scroll> with TickerProviderStateMixin {
-  late AnimationController hidingAnimationController;
-  late AnimationController springBackAnimationController;
+  AnimationController? hidingAnimationController;
+  AnimationController? springBackAnimationController;
   double offset = 0;
   double lastOffset = 0;
   ScrollValue value = ScrollValue();
@@ -62,25 +62,26 @@ class _ScrollState extends State<Scroll> with TickerProviderStateMixin {
   void initState() {
     controller
       ..addListener(() {
-       if (mounted) {
-         setState(() {
-           value = controller.value;
-         });
-       }
+        if (mounted) {
+          setState(() {
+            value = controller.value;
+          });
+        }
       })
       ..instance = this;
     hidingAnimationController =
         AnimationController(vsync: this, duration: Duration(milliseconds: 250))
           ..addListener(
             () {
-              if (hidingAnimationController.status ==
+              if (hidingAnimationController?.status ==
                       AnimationStatus.dismissed ||
-                  this.offset == 0 || !mounted) {
+                  this.offset == 0 ||
+                  !mounted) {
                 return;
               }
               if (refreshIndicatorStatus.hiding) {
                 double offset =
-                    (1 - hidingAnimationController.value) * offsetToArmed;
+                    (1 - (hidingAnimationController?.value ?? 0)) * offsetToArmed;
                 setState(() {
                   this.offset = -offset;
                 });
@@ -92,13 +93,14 @@ class _ScrollState extends State<Scroll> with TickerProviderStateMixin {
         AnimationController(vsync: this, duration: Duration(milliseconds: 250))
           ..addListener(
             () {
-              if (!mounted || springBackAnimationController.status ==
-                  AnimationStatus.dismissed) {
+              if (!mounted ||
+                  springBackAnimationController?.status ==
+                      AnimationStatus.dismissed) {
                 return;
               }
               final double offset = offsetToArmed +
                   (lastOffset.abs() - offsetToArmed) *
-                      (1 - springBackAnimationController.value);
+                      (1 - (springBackAnimationController?.value ?? 0));
               setState(() {
                 this.offset = -offset;
               });
@@ -109,8 +111,10 @@ class _ScrollState extends State<Scroll> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    hidingAnimationController.dispose();
-    springBackAnimationController.dispose();
+    hidingAnimationController?.dispose();
+    springBackAnimationController?.dispose();
+    hidingAnimationController = null;
+    springBackAnimationController = null;
     super.dispose();
   }
 
@@ -125,39 +129,40 @@ class _ScrollState extends State<Scroll> with TickerProviderStateMixin {
       onPointerUp: _onPointerUp,
       child: NotificationListener<ScrollUpdateNotification>(
         onNotification: _handleNotification,
-        child: ClipRect(child: Stack(
-          children: [
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: offsetToArmed,
-              child:  widget.headerBuilder(
+        child: ClipRect(
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: offsetToArmed,
+                child: widget.headerBuilder(
                   value,
                   (offset / offsetToArmed).abs(),
-              ),
-            ),
-            Positioned.fill(
-              child: Transform.translate(
-                offset: Offset(0, -offset),
-                child: CustomScrollView(
-                  physics: AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics()),
-                  slivers: [
-                    body,
-                    SliverToBoxAdapter(
-                      child: widget.footerBuilder(
-                        value,
-                        // value.isEmpty,
-                        // value.isNoMore,
-                      ),
-                    )
-                  ],
                 ),
               ),
-            ),
-          ],
-        ),
+              Positioned.fill(
+                child: Transform.translate(
+                  offset: Offset(0, -offset),
+                  child: CustomScrollView(
+                    physics: AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics()),
+                    slivers: [
+                      body,
+                      SliverToBoxAdapter(
+                        child: widget.footerBuilder(
+                          value,
+                          // value.isEmpty,
+                          // value.isNoMore,
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -168,8 +173,8 @@ class _ScrollState extends State<Scroll> with TickerProviderStateMixin {
       setState(() {
         this.lastOffset = offset;
       });
-      springBackAnimationController.forward().whenCompleteOrCancel(
-          () => springBackAnimationController.reverse(from: 0));
+      springBackAnimationController?.forward().whenCompleteOrCancel(
+          () => springBackAnimationController?.reverse(from: 0));
       _onRefresh();
     }
   }
@@ -238,9 +243,9 @@ class _ScrollState extends State<Scroll> with TickerProviderStateMixin {
     }
     await Future.delayed(Duration(milliseconds: 500));
     controller._setRefreshHiding();
-    hidingAnimationController.forward().whenComplete(() {
+    hidingAnimationController?.forward().whenCompleteOrCancel(() {
       controller._setRefreshIdle();
-      hidingAnimationController.reverse(from: 0);
+      hidingAnimationController?.reverse(from: 0);
     });
   }
 }
